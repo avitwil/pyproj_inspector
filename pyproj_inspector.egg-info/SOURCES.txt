@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+pyproj_inspector/__init__.py
+pyproj_inspector/build_utils.py
+pyproj_inspector/cli.py
+pyproj_inspector/inspector.py
+pyproj_inspector/packaging_utils.py
+pyproj_inspector.egg-info/PKG-INFO
+pyproj_inspector.egg-info/SOURCES.txt
+pyproj_inspector.egg-info/dependency_links.txt
+pyproj_inspector.egg-info/top_level.txt
+tests/test_builders.py
+tests/test_cli.py
+tests/test_edge_cases.py
+tests/test_inspector.py
+tests/test_more_cases.py
+tests/test_packaging.py

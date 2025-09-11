@@ -1,0 +1,21 @@
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyproj_inspector"
+version = "0.1.2"
+description = "Analyze and package Python projects"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [{ name = "Avi Twil" }]
+license = { text = "MIT" }
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+[tool.setuptools]
+packages = ["pyproj_inspector"]
