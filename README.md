@@ -78,11 +78,9 @@ It also ships with utilities to:
 ## Installation
 
 ```bash
-# From your project (editable install)
-pip install -e .
 
-# Or install from a wheel/sdist you build later
-pip install pyproj_inspector-*.whl
+pip install pyproj_inspector
+
 ```
 
 > For **binary creation**, ensure you have the chosen tool installed in your environment:
