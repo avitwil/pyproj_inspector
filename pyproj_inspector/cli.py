@@ -8,13 +8,18 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="pyproj_inspector", description="Analyze and package Python projects")
     ap.add_argument("path", help="Path to a .py file or a project folder")
     ap.add_argument("--json", action="store_true", help="Print JSON summary and exit")
+    ap.add_argument("--no-network", action="store_true", default=False, dest="no_network",
+                     help="Skip PyPI network lookups when mapping imports to distributions")
 
     sub = ap.add_subparsers(dest="cmd")
 
     sb = sub.add_parser("binary", help="Build a binary with PyInstaller or Nuitka")
     sb.add_argument("--entry", required=True)
     sb.add_argument("--mode", choices=["pyinstaller", "nuitka"], default="pyinstaller")
-    sb.add_argument("--onefile", action="store_true", default=True)
+    sb.add_argument("--onefile", action="store_true", dest="onefile", default=True,
+                     help="Build a single-file binary (default)")
+    sb.add_argument("--no-onefile", action="store_false", dest="onefile",
+                     help="Build a directory-based (non-onefile) binary")
 
     sp = sub.add_parser("pypi", help="Write pyproject.toml for PyPI packaging")
     sp.add_argument("--name", required=True)
@@ -30,7 +35,7 @@ def main(argv=None):
 
     args = ap.parse_args(argv)
 
-    proj = PythonProject(args.path)
+    proj = PythonProject(args.path, no_network=args.no_network)
 
     if args.cmd is None:
         if args.__dict__["json"]:

@@ -4,6 +4,7 @@ import ast
 import os
 import sys
 import json
+import shutil
 import tempfile
 import subprocess
 from dataclasses import dataclass, field
@@ -52,9 +53,22 @@ class ProjectParseResult:
             indent=2,
         )
 
+_EXCLUDED_DIR_NAMES: Set[str] = {".git", "__pycache__", ".venv", "venv", "node_modules", "build", "dist"}
+
+
+def _is_excluded_dir(name: str) -> bool:
+    return name in _EXCLUDED_DIR_NAMES or name.endswith(".egg-info")
+
+
+def _under_excluded_dir(path: Path, root: Path) -> bool:
+    rel_parts = path.relative_to(root).parts[:-1]  # directory components only, not the filename
+    return any(_is_excluded_dir(part) for part in rel_parts)
+
+
 class PythonProject:
-    def __init__(self, path: str | os.PathLike):
+    def __init__(self, path: str | os.PathLike, *, no_network: bool = False):
         p = Path(path).resolve()
+        self.no_network = no_network
         if p.is_file() and p.suffix == ".py":
             root = p.parent
             entry_rel = p.name
@@ -62,7 +76,7 @@ class PythonProject:
         elif p.is_dir():
             root = p
             entry_rel = None
-            files = [q for q in root.rglob("*.py") if q.is_file()]
+            files = [q for q in root.rglob("*.py") if q.is_file() and not _under_excluded_dir(q, root)]
         else:
             raise ValueError("Path must be a .py file or a directory containing a project")
 
@@ -107,7 +121,7 @@ class PythonProject:
                     mod = node.module.split(".")[0]
                     self._classify_module(mod, root, internal_modules, builtins, top_level_imports)
 
-        external_map: Dict[str, Set[str]] = self._map_imports_to_distributions(top_level_imports)
+        external_map: Dict[str, Set[str]] = self._map_imports_to_distributions(top_level_imports, no_network=no_network)
 
         self.result = ProjectParseResult(
             root=root,
@@ -137,7 +151,7 @@ class PythonProject:
         top.add(mod)
 
     @staticmethod
-    def _map_imports_to_distributions(imports: Set[str]) -> Dict[str, Set[str]]:
+    def _map_imports_to_distributions(imports: Set[str], *, no_network: bool = False) -> Dict[str, Set[str]]:
         dist_map: Dict[str, Set[str]] = {}
         if packages_distributions:
             reverse = packages_distributions()
@@ -147,7 +161,7 @@ class PythonProject:
                     for d in dists:
                         dist_map.setdefault(d, set()).add(mod)
         unmapped = [m for m in imports if all(m not in v for v in dist_map.values())]
-        if unmapped:
+        if unmapped and not no_network:
             try:
                 import urllib.request
                 for name in unmapped:
@@ -196,4 +210,4 @@ class PythonProject:
             cmd = [str(py), str(tmp / entry_rel), *(args or [])]
             return subprocess.run(cmd, check=False, text=True, capture_output=True, env={**os.environ, **(env or {})})
         finally:
-            pass
+            shutil.rmtree(tmp, ignore_errors=True)

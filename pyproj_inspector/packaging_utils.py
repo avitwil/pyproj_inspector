@@ -1,10 +1,11 @@
 
 from __future__ import annotations
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 from string import Template
+
+from packaging.version import InvalidVersion, Version
 
 PYPROJECT_TEMPLATE = Template("""[build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -47,10 +48,13 @@ def _fetch_pypi_json(project: str) -> Optional[dict]:
         return None
 
 def _bump_patch(version: str) -> str:
-    import re as _re
-    m = _re.match(r"^(\d+)\.(\d+)\.(\d+)$", version)
+    import re
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", version)
     if not m:
-        return version
+        raise ValueError(
+            f"Cannot bump patch version for non-standard version string: {version!r} "
+            "(expected a plain 'MAJOR.MINOR.PATCH' version with no pre-release/build metadata)"
+        )
     major, minor, patch = map(int, m.groups())
     return f"{major}.{minor}.{patch+1}"
 
@@ -72,8 +76,22 @@ def plan_pypi_version(name: str, version: Optional[str], new: bool) -> PypiPlan:
         if data is None:
             return PypiPlan(name, version or "0.1.0", True)
         latest = data.get("info", {}).get("version", "0.0.0")
-        use_ver = version if (version and version > latest) else _bump_patch(latest)
+        use_ver = version if (version and _is_newer_version(version, latest)) else _bump_patch(latest)
         return PypiPlan(name, use_ver, False)
+
+
+def _is_newer_version(candidate: str, baseline: str) -> bool:
+    """Return True if `candidate` is a newer version than `baseline`.
+
+    Uses PEP 440-aware comparison via `packaging.version.Version` so that
+    multi-digit components (e.g. "1.10.0" vs "1.9.0") compare correctly.
+    Falls back to plain string comparison if either string isn't a valid
+    PEP 440 version.
+    """
+    try:
+        return Version(candidate) > Version(baseline)
+    except InvalidVersion:
+        return candidate > baseline
 
 def create_pypi_package(project_root: str | Path, package_name: str, *,
                          version: Optional[str] = None, new: bool = True,
